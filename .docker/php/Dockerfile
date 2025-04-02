@@ -1,60 +1,41 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.3-fpm
 
+# Install system dependencies before Node.js & Composer for better caching
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential zlib1g-dev default-mysql-client curl gnupg procps git unzip \
+    libzip-dev libpq-dev libicu-dev libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
+    docker-php-ext-install zip pdo_mysql pdo_pgsql pgsql intl && \
+    docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install gd && \
+    pecl install redis pcov && docker-php-ext-enable redis pcov && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js, NPM in a single step
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    npm install -g npm@latest && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Composer directly with Curl (removes unnecessary temp files)
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Copy configurations & entrypoint
 COPY php.ini /usr/local/etc/php/
 COPY docker.conf /usr/local/etc/php-fpm.d/docker.conf
 COPY .bashrc /root/
-
-# Copy the entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# mix
-RUN apk update \
-  && apk add --no-cache build-essential zlib1g-dev default-mysql-client curl gnupg procps git unzip libzip-dev libpq-dev \
-  && docker-php-ext-install zip pdo_mysql pdo_pgsql pgsql
-
-# intl
-RUN apk add --no-cache libicu-dev \
-  && docker-php-ext-configure intl \
-  && docker-php-ext-install intl
-
-# gd
-RUN apk add --no-cache libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
-docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ && \
-docker-php-ext-install gd
-
-# redis
-RUN pecl install redis && docker-php-ext-enable redis
-
-# pcov
-RUN pecl install pcov && docker-php-ext-enable pcov
-
-# Xdebug
-# RUN pecl install xdebug \
-# && docker-php-ext-enable xdebug \
-# && echo ";zend_extension=xdebug" > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-
-# Node.js, NPM, Yarn
-RUN curl -sL https://deb.nodesource.com/setup_22.x | bash -
-RUN apk add --no-cache nodejs
-RUN npm install npm@latest -g
-
-# Composer
-RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-RUN php composer-setup.php
-RUN php -r "unlink('composer-setup.php');"
-RUN mv composer.phar /usr/local/bin/composer
-
-ENV COMPOSER_ALLOW_SUPERUSER 1
-ENV COMPOSER_HOME /composer
-ENV PATH $PATH:/composer/vendor/bin
-RUN composer config --global process-timeout 3600
+# Set Composer environment variables
+ENV COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_HOME=/composer \
+    PATH="$PATH:/composer/vendor/bin"
 
 WORKDIR /root
 
 EXPOSE 5173
 WORKDIR /var/www
 
-#entrypoint
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["php-fpm"]
