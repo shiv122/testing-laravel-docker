@@ -1,23 +1,22 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.3-fpm
 
-# Install system dependencies required for extensions
-RUN apk add --no-cache \
-    build-base zlib-dev mariadb-client curl git unzip icu-dev \
-    libzip-dev libpq-dev freetype-dev libjpeg-turbo-dev libpng-dev \
-    autoconf make g++ php8-pecl-dev
-
-# Install PHP extensions
-RUN docker-php-ext-install zip pdo_mysql pdo_pgsql pgsql intl && \
+# Install system dependencies before Node.js & Composer for better caching
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential zlib1g-dev default-mysql-client curl gnupg procps git unzip \
+    libzip-dev libpq-dev libicu-dev libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
+    docker-php-ext-install zip pdo_mysql pdo_pgsql pgsql intl && \
     docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install gd
+    docker-php-ext-install gd && \
+    pecl install redis pcov && docker-php-ext-enable redis pcov && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PECL extensions (Requires phpize dependencies)
-RUN pecl install redis pcov && docker-php-ext-enable redis pcov
+# Install Node.js, NPM in a single step
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    npm install -g npm@latest && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js & NPM from Alpine repositories
-RUN apk add --no-cache nodejs npm && npm install -g npm@latest
-
-# Install Composer
+# Install Composer directly with Curl (removes unnecessary temp files)
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Copy configurations & entrypoint
