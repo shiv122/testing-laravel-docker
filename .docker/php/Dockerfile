@@ -9,17 +9,17 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # mix
-RUN apt-get update \
-  && apt-get install -y build-essential zlib1g-dev default-mysql-client curl gnupg procps git unzip libzip-dev libpq-dev \
+RUN apk update \
+  && apk add --no-cache build-essential zlib1g-dev default-mysql-client curl gnupg procps git unzip libzip-dev libpq-dev \
   && docker-php-ext-install zip pdo_mysql pdo_pgsql pgsql
 
 # intl
-RUN apt-get install -y libicu-dev \
+RUN apk add --no-cache libicu-dev \
   && docker-php-ext-configure intl \
   && docker-php-ext-install intl
 
 # gd
-RUN apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
+RUN apk add --no-cache libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
 docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ && \
 docker-php-ext-install gd
 
@@ -36,7 +36,7 @@ RUN pecl install pcov && docker-php-ext-enable pcov
 
 # Node.js, NPM, Yarn
 RUN curl -sL https://deb.nodesource.com/setup_22.x | bash -
-RUN apt-get install -y nodejs
+RUN apk add --no-cache nodejs
 RUN npm install npm@latest -g
 
 # Composer
