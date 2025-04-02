@@ -2,6 +2,7 @@ FROM php:8.3-fpm-alpine
 
 COPY php.ini /usr/local/etc/php/
 COPY docker.conf /usr/local/etc/php-fpm.d/docker.conf
+COPY .bashrc /root/
 
 # Copy the entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -9,7 +10,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # mix
 RUN apt-get update \
-  && apt-get install -y build-essential zlib1g-dev default-mysql-client curl gnupg procps vim unzip libzip-dev libpq-dev \
+  && apt-get install -y build-essential zlib1g-dev default-mysql-client curl gnupg procps git unzip libzip-dev libpq-dev \
   && docker-php-ext-install zip pdo_mysql pdo_pgsql pgsql
 
 # intl
@@ -33,7 +34,7 @@ RUN pecl install pcov && docker-php-ext-enable pcov
 # && docker-php-ext-enable xdebug \
 # && echo ";zend_extension=xdebug" > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
-# Node.js, NPM
+# Node.js, NPM, Yarn
 RUN curl -sL https://deb.nodesource.com/setup_22.x | bash -
 RUN apt-get install -y nodejs
 RUN npm install npm@latest -g
